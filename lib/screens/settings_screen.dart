@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/AudioService.dart';
+import '../services/VibrationService.dart';
 import '../services/storage_service.dart';
 import '../services/app_localizations.dart';
+import '../services/notification_service.dart';
+
 
 class SettingsScreen extends StatefulWidget {
   final Function(bool)? onThemeChanged;
@@ -14,6 +19,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final StorageService _storageService = StorageService();
+  final NotificationService _notificationService = NotificationService();
+  final VibrationService _vibrationService = VibrationService();
+  final AudioService _audioService = AudioService();
 
   bool _isDarkMode = false;
   bool _vibrationEnabled = true;
@@ -48,6 +56,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _storageService.setDarkMode(value);
     widget.onThemeChanged?.call(value);
 
+    // Provide feedback
+    await _vibrationService.light();
+    await _audioService.playClick();
+
     if (mounted) {
       final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +76,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleVibration(bool value) async {
     setState(() => _vibrationEnabled = value);
     await _storageService.setVibrationEnabled(value);
+
+    // Test vibration immediately if enabled
+    if (value) {
+      await _vibrationService.success();
+    }
+    await _audioService.playClick();
 
     if (mounted) {
       final localizations = AppLocalizations.of(context);
@@ -82,6 +100,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _soundEnabled = value);
     await _storageService.setSoundEnabled(value);
 
+    // Test sound immediately if enabled
+    await _vibrationService.light();
+    if (value) {
+      await _audioService.playSuccess();
+    }
+
     if (mounted) {
       final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,6 +122,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleNotifications(bool value) async {
     setState(() => _notificationsEnabled = value);
     await _storageService.setNotificationsEnabled(value);
+
+    if (value) {
+      // Request permissions and setup daily reminders
+      final hasPermission = await _notificationService.requestPermissions();
+      if (hasPermission) {
+        await _notificationService.showDailyReminder();
+
+        // Show test notification
+        await _notificationService.showNotification(
+          title: '🔔 Notifications Enabled',
+          body: 'You will now receive app updates and reminders!',
+        );
+      } else {
+        // Permission denied, revert the setting
+        setState(() => _notificationsEnabled = false);
+        await _storageService.setNotificationsEnabled(false);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notification permission denied. Please enable it in settings.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+    } else {
+      // Cancel all notifications
+      await _notificationService.cancelDailyReminder();
+    }
+
+    await _vibrationService.light();
+    await _audioService.playClick();
 
     if (mounted) {
       final localizations = AppLocalizations.of(context);
@@ -118,6 +176,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _selectedLanguage = newValue);
     await _storageService.setLanguage(newValue);
     widget.onLanguageChanged?.call(newValue);
+
+    await _vibrationService.light();
+    await _audioService.playClick();
 
     if (mounted) {
       final localizations = AppLocalizations.of(context);
@@ -194,8 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _notificationsEnabled
                         ? Icons.notifications_active
                         : Icons.notifications_off,
-                    color:
-                    _notificationsEnabled ? Colors.blue : Colors.grey,
+                    color: _notificationsEnabled ? Colors.blue : Colors.grey,
                   ),
                   title: Text(localizations.notifications),
                   subtitle: Text(_notificationsEnabled
@@ -299,8 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: const Text('1.0.0'),
                 ),
                 ListTile(
-                  leading:
-                  const Icon(Icons.developer_mode, color: Colors.blue),
+                  leading: const Icon(Icons.developer_mode, color: Colors.blue),
                   title: Text(localizations.poweredBy),
                   subtitle: const Text('Google ML Kit'),
                 ),
@@ -311,4 +370,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+
 }

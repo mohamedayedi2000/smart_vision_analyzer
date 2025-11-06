@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:smart_vision_analyzer/screens/history_screen.dart';
+import 'package:smart_vision_analyzer/screens/home_screen.dart';
 import 'package:smart_vision_analyzer/services/app_localizations.dart';
-import 'screens/home_screen.dart';
-import 'services/storage_service.dart';
+import 'package:smart_vision_analyzer/services/notification_service.dart';
+import 'package:smart_vision_analyzer/services/storage_service.dart';
 import 'app/theme.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  await notificationService.requestPermissions();
+
+  // ✅ Handle notification tap
+  NotificationService.onNotificationTap = (payload) {
+    if (payload == 'open_history') {
+      navigatorKey.currentState?.pushNamed('/history');
+    }
+  };
+
   runApp(const MyApp());
 }
 
@@ -66,6 +82,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Smart Vision Analyzer',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -83,6 +100,9 @@ class _MyAppState extends State<MyApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      routes: {
+        '/history': (context) => const HistoryScreen(),
+      },
       home: HomeScreen(
         onThemeChanged: _toggleTheme,
         onLanguageChanged: _changeLanguage,

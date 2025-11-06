@@ -18,6 +18,13 @@ dependencies:
   shared_preferences: ^2.2.2
   flutter_localizations:
     sdk: flutter
+
+  # ✅ Audio support
+  audioplayers: ^6.0.0
+
+  # ✅ Permission handling (for Android 13+ notifications)
+  permission_handler: ^11.3.0
+
   # ✅ ML Kit packages (same google_mlkit_commons version)
   google_mlkit_commons: ^0.11.0
   google_mlkit_text_recognition: ^0.15.0
@@ -36,3 +43,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # ✅ Add sound assets
+  assets:
+    - assets/sounds/click.mp3
+    - assets/sounds/success.mp3
+    - assets/sounds/error.mp3
+    - assets/sounds/shutter.mp3
+    - assets/sounds/processing.mp3
